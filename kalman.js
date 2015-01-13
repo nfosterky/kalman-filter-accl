@@ -46,6 +46,7 @@ KalmanModel = (function(){
     //update
     this.y_k = o.z_k.subtract(o.H_k.x(this.x_k_k_));//observation residual
     this.S_k = o.H_k.x(this.P_k_k_.x(o.H_k.transpose())).add(o.R_k);//residual covariance
+    console.log(this.P_k_k_,o.H_k,this.S_k)
     this.K_k = this.P_k_k_.x(o.H_k.transpose().x(this.S_k.inverse()));//Optimal Kalman gain
     this.x_k = this.x_k_k_.add(this.K_k.x(this.y_k));
     this.P_k = this.I.subtract(this.K_k.x(o.H_k)).x(this.P_k_k_);
