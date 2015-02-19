@@ -26,11 +26,22 @@ var Kalman = {
 
 KalmanModel = (function(){
 
-  function KalmanModel(x_0,P_0,F_k,Q_k){
+  function KalmanModel(x_0,P_0,F_k,B_k,Q_k){
     this.x_k  = x_0;
     this.P_k  = P_0;
     this.F_k  = F_k;
+    this.B_k  = B_k;
     this.Q_k  = Q_k;
+  }
+  
+  KalmanModel.prototype.predict =  function(u_k){
+    debugger;
+    this.x_k_ = this.x_k;
+    this.P_k_ = this.P_k;
+
+    //Predict
+    this.x_k_k_ = this.F_k.x(this.x_k_).add(this.B_k.x(u_k));
+    this.P_k_k_ = this.F_k.x(this.P_k_.x(this.F_k.transpose())).add(this.Q_k);  
   }
   
   KalmanModel.prototype.update =  function(o){
@@ -38,10 +49,6 @@ KalmanModel = (function(){
     //init
     this.x_k_ = this.x_k;
     this.P_k_ = this.P_k;
-
-    //Predict
-    this.x_k_k_ = this.F_k.x(this.x_k_);
-    this.P_k_k_ = this.F_k.x(this.P_k_.x(this.F_k.transpose()));
 
     //update
     this.y_k = o.z_k.subtract(o.H_k.x(this.x_k_k_));//observation residual
@@ -62,6 +69,15 @@ KalmanObservation = (function(){
     this.H_k = H_k;//observation model
     this.R_k = R_k;//observation noise covariance
   }
-  
   return KalmanObservation;
 })();
+/*
+KalmanPrediction = (function(){
+
+  function KalmanPrediction(u_k){
+    this.u_k = u_k;//input
+  }
+  
+  return KalmanPrediction;
+})();
+*/
