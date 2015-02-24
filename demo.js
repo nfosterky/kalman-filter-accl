@@ -19,9 +19,6 @@ window.onload = function() {
   var alphaR, betaR, gammaR;
 
   function initGyro() {
-    var posX = 0,
-        posY = 0,
-        posZ = 0;
 
     // set frequency of measurements in milliseconds
     gyro.frequency = dt * SECOND;
@@ -30,9 +27,9 @@ window.onload = function() {
       var x, y, z;
 
       if (o.x !== null) {
-        x = parseFloat(o.x.toFixed(5));
-        y = parseFloat(o.y.toFixed(5));
-        z = parseFloat(o.z.toFixed(5));
+        ax = parseFloat(o.x.toFixed(5));
+        ay = parseFloat(o.y.toFixed(5));
+        az = parseFloat(o.z.toFixed(5));
 
         // angular rotation velocity
         alphaR = convertDegreesToRadians(parseFloat(o.alphaR.toFixed(5))); // Z
@@ -40,31 +37,34 @@ window.onload = function() {
         gammaR = convertDegreesToRadians(parseFloat(o.gammaR.toFixed(5))); // Y
 
         // update changes to F matrix
-        F_k.elements[0][1] = dt *  alphaR;
-        F_k.elements[0][2] = dt * -gammaR;
+        F_k.elements[3][4] = dt *  alphaR;
+        F_k.elements[3][5] = dt * -gammaR;
 
-        F_k.elements[1][0] = dt * -alphaR;
-        F_k.elements[1][2] = dt *  betaR;
+        F_k.elements[4][3] = dt * -alphaR;
+        F_k.elements[4][5] = dt *  betaR;
 
-        F_k.elements[2][0] = dt *  gammaR;
-        F_k.elements[2][1] = dt * -betaR;
+        F_k.elements[5][3] = dt *  gammaR;
+        F_k.elements[5][4] = dt * -betaR;
         KM.F_k = F_k;
 
-        var u_k = $V([x, y, z]);
+        var u_k = $V([ax, ay, az]);
         KM.predict(u_k);
 
         var accelWithoutGravity = u_k,
-            linearVelocity = $V(KM.x_k.elements.slice(0,3)),
+            position = $V(KM.x_k.elements.slice(0,3)),
+            linearVelocity = $V(KM.x_k.elements.slice(3,6)),
             angularVelocity = $V([betaR, gammaR, alphaR]);
 
         var linearAccel = accelWithoutGravity.subtract(
             angularVelocity.cross(linearVelocity));
 
-        var velX = KM.x_k.elements[0],
-            velY = KM.x_k.elements[1],
-            velZ = KM.x_k.elements[2];
-        // if KM.x_k.elements[0] is inside threshold it
-        // if observation is available
+        var posX = KM.x_k.elements[0],
+            posY = KM.x_k.elements[1],
+            posZ = KM.x_k.elements[2];
+
+        var velX = KM.x_k.elements[3],
+            velY = KM.x_k.elements[4],
+            velZ = KM.x_k.elements[5];
 
         // if zero-velocity constraint is applicable
         var tol = 0.15,
@@ -73,10 +73,14 @@ window.onload = function() {
         if (Math.abs(u_k.modulus()) < tol) { // not much accel
           // apply zero-velocity constraint through an 'observation' of 0
           var z_k = $V([0,0,0]);
-          var H_k = Matrix.I(3).augment(Matrix.Zero(3,3));
+          var H_k = Matrix.Zero(3,3)
+                    .augment(Matrix.I(3))
+                    .augment(Matrix.Zero(3,3));
+
           var R_k = Matrix.Diagonal([
             sigma2velUpdate, sigma2velUpdate, sigma2velUpdate
           ]);
+          
           var KO = new KalmanObservation(z_k, H_k, R_k);
           KM.update(KO);
 
@@ -85,10 +89,6 @@ window.onload = function() {
         } else {
           light.style.display = "none";
         }
-
-        posX += dt * velX;
-        posY += dt * velY;
-        posZ += dt * velZ;
 
         elemPosX.innerHTML = posX.toFixed(3);
         elemPosY.innerHTML = posY.toFixed(3);
@@ -106,39 +106,47 @@ window.onload = function() {
   }
 
   // State (3 initial velocities, 3 initial accl biases)
-  var x_0 = $V([0, 0, 0, 0, 0, 0]);
+  var x_0 = $V([0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
   // Covariance Matrix - uncertainity of state (initial error?)
   var initPositionVariance = 0.01,
+      initVelocityVariance = 0.01,
       initBiasVariance = 0;
 
   var P_0 = Matrix.Diagonal([
     initPositionVariance, initPositionVariance, initPositionVariance,
+    initVelocityVariance, initVelocityVariance, initVelocityVariance,
     initBiasVariance, initBiasVariance, initBiasVariance
   ]);
 
   // Transition Matrix - how each variable is updated, update each timestep
-  var rows = 6,
-      cols = 3;
+  var numStateVars = 9,
+      numInputVars = 3;
 
-  F_k = Matrix.I(rows);
+  F_k = Matrix.I(numStateVars);
 
   F_k.elements[0][3] = dt;
   F_k.elements[1][4] = dt;
   F_k.elements[2][5] = dt;
 
-  // ~ Control Matrix - converts external inputs for updating state
-  var B_k = Matrix.Zero(rows, cols); //$M([[0]]);
+  F_k.elements[3][6] = dt;
+  F_k.elements[4][7] = dt;
+  F_k.elements[5][8] = dt;
 
-  B_k.elements[0][0] = dt;
-  B_k.elements[1][1] = dt;
-  B_k.elements[2][2] = dt;
+  // ~ Control Matrix - converts external inputs for updating state
+  var B_k = Matrix.Zero(numStateVars, numInputVars); //$M([[0]]);
+
+  B_k.elements[3][0] = dt;
+  B_k.elements[4][1] = dt;
+  B_k.elements[5][2] = dt;
 
   // Prediction Noise Matrix, weights for prediction step, previous matrices
-  var vSigmaSquared = 5,    // change later ?
+  var pSigmaSquared = 5,    // change later ?
+      vSigmaSquared = 5,    // change later ?
       bSigmaSquared = 5;    // change later ?
 
   var Q_k = Matrix.Diagonal([
+    pSigmaSquared, pSigmaSquared, pSigmaSquared,
     vSigmaSquared, vSigmaSquared, vSigmaSquared,
     bSigmaSquared, bSigmaSquared, bSigmaSquared
   ]);
