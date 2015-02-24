@@ -7,6 +7,17 @@
 			font-size: 4rem;
 			text-align: center;
 		}
+
+		#constraintLight {
+			width: 4rem;
+	    height: 4rem;
+	    background: red;
+			margin: auto;
+		}
+		
+		div {
+			min-height: 8rem;
+		}
 	</style>
 </head>
 <body>
@@ -15,6 +26,12 @@
 	<div>Y: <span id="posY"></span></div>
 	<div>Z: <span id="posZ"></span></div>
 
+	<div>Velocity</div>
+	<div>X: <span id="velX"></span></div>
+	<div>Y: <span id="velY"></span></div>
+	<div>Z: <span id="velZ"></span></div>
+
+	<div id="constraintLight"></div>
 <script type="text/javascript" src="test/sylvester.src.js"></script>
 <script type="text/javascript" src="gyro.js"></script>
 <script type="text/javascript" src="kalman.js"></script>
