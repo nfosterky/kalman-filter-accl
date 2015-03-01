@@ -4,6 +4,8 @@ function convertDegreesToRadians (degrees) {
   return degrees * (Math.PI / 180);
 }
 
+var CANVAS_MID_TOP = window.innerHeight / 2;
+
 // demo.js
 window.onload = function() {
   var elemPosX = document.getElementById("posX"),
@@ -17,7 +19,7 @@ window.onload = function() {
   var dt = 0.1; // multiply by second = hundred microseconds
 
   var alphaR, betaR, gammaR;
-
+  var top = 0;
   function initGyro() {
 
     // set frequency of measurements in milliseconds
@@ -25,7 +27,7 @@ window.onload = function() {
 
     gyro.startTracking(function(o) {
       var x, y, z;
-
+      // console.log(o.x);
       if (o.x !== null) {
         ax = parseFloat(o.x.toFixed(5));
         ay = parseFloat(o.y.toFixed(5));
@@ -68,7 +70,7 @@ window.onload = function() {
 
         // if zero-velocity constraint is applicable
         var tol = 0.15,
-            sigma2velUpdate = 0.1;
+            sigma2velUpdate = 0.0001;
 
         if (Math.abs(u_k.modulus()) < tol) { // not much accel
           // apply zero-velocity constraint through an 'observation' of 0
@@ -80,7 +82,7 @@ window.onload = function() {
           var R_k = Matrix.Diagonal([
             sigma2velUpdate, sigma2velUpdate, sigma2velUpdate
           ]);
-          
+
           var KO = new KalmanObservation(z_k, H_k, R_k);
           KM.update(KO);
 
@@ -97,6 +99,23 @@ window.onload = function() {
         elemVelY.innerHTML = velY.toFixed(3);
         elemVelZ.innerHTML = velZ.toFixed(3);
 
+        var scaleFactor = window.innerWidth / 15,
+            width = KM.P_k.elements[2][2] * scaleFactor,  // Z
+            height = KM.P_k.elements[1][1] * scaleFactor,  // Y
+            left = posZ * scaleFactor - width/2,
+            top = (CANVAS_MID_TOP + posY * scaleFactor) - height/2;
+
+        // debugger;
+        ell.set({
+          rx: width,
+          ry: height,
+          left: left,
+          top: top
+        });
+
+        canvas.renderAll();
+
+
         // elemVelX.innerHTML = linearAccel.elements[0].toFixed(3);
         // elemVelY.innerHTML = linearAccel.elements[1].toFixed(3);
         // elemVelZ.innerHTML = linearAccel.elements[2].toFixed(3);
@@ -109,8 +128,8 @@ window.onload = function() {
   var x_0 = $V([0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
   // Covariance Matrix - uncertainity of state (initial error?)
-  var initPositionVariance = 0.01,
-      initVelocityVariance = 0.01,
+  var initPositionVariance = 0.001,
+      initVelocityVariance = 0.001,
       initBiasVariance = 0;
 
   var P_0 = Matrix.Diagonal([
@@ -141,9 +160,9 @@ window.onload = function() {
   B_k.elements[5][2] = dt;
 
   // Prediction Noise Matrix, weights for prediction step, previous matrices
-  var pSigmaSquared = 5,    // change later ?
-      vSigmaSquared = 5,    // change later ?
-      bSigmaSquared = 5;    // change later ?
+  var pSigmaSquared = .00005,    // change later ?
+      vSigmaSquared = .00005,    // change later ?
+      bSigmaSquared = .00005;    // change later ?
 
   var Q_k = Matrix.Diagonal([
     pSigmaSquared, pSigmaSquared, pSigmaSquared,
@@ -153,18 +172,32 @@ window.onload = function() {
 
   var KM = new KalmanModel(x_0, P_0, F_k, B_k, Q_k);
 
-  // var z_k = $V([1]);
-  // var H_k = $M([[1]]);
-  // var R_k = $M([[4]]);
-  // var KO = new KalmanObservation(z_k, H_k, R_k);
+  var canvas, ell;
 
-  // for (var i = 0; i < 200; i++){
-  //   z_k = $V([0.5 + Math.random()]);
-  //   KO.z_k = z_k;
-  //   KM.predict($V([0]));
-  //   //  KM.update(KO);
-  //   console.log(JSON.stringify(KM.x_k.elements));
-  // }
+  function addMap () {
+    // create a wrapper around native canvas element (with id="c")
+    canvas = new fabric.Canvas('container');
 
+    canvas.setDimensions({
+      height: window.innerHeight,
+      width: window.innerWidth
+    });
+
+    // create a rectangle object
+    ell = new fabric.Ellipse({
+      left: 0,
+      top: CANVAS_MID_TOP,
+      fill: 'green',
+      rx: 10,
+      ry: 10
+    });
+
+    // "add" rectangle onto canvas
+    canvas.add(ell);
+
+  }
+
+  addMap();
   initGyro();
+
 };
