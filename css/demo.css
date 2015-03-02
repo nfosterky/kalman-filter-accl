@@ -1,0 +1,45 @@
+body {
+  font-size: 1rem;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+}
+
+#constraintLight {
+  width: 4rem;
+  height: 4rem;
+  background: red;
+  margin: auto;
+}
+
+div {
+  min-height: 8rem;
+}
+
+.canvas-container {
+  border: 1rem solid black;
+  margin: auto;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.x.axis path {
+  display: none;
+}
+
+.line1 {
+  fill: none;
+  stroke-width: 1.5px;
+  stroke: steelblue;
+}
+
+.line2 {
+  fill: none;
+  stroke-width: 1.5px;
+  stroke: red;
+}
