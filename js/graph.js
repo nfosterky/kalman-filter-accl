@@ -58,7 +58,7 @@ Graph.prototype.init = function (elemId) {
 
   // add x axis
   this.svg.append("g")
-    .attr("class", "x axis")
+    .attr("class", "x_axis")
     .attr("transform", "translate(0," + height + ")")
     .call(this.xAxis);
 
@@ -81,6 +81,8 @@ Graph.prototype.startDrawing = function (period) {
     // update x min and max
     that.minX = elapsedTime - that.rangeX;
     that.maxX = elapsedTime;
+
+
 
     // update graph x axis
     that.x.domain([that.minX, that.maxX]);
@@ -123,7 +125,7 @@ Graph.prototype.startDrawing = function (period) {
     }
 
     // update elapsed time -> convert to seconds
-    elapsedTime += period / 1000; //
+    elapsedTime += that.period / 1000; //
   }, this.period)
 }
 
@@ -137,27 +139,11 @@ function Line (spec) {
   this.minDataIndex = 0;
 }
 
-// generate test data
-// Line.prototype.generateData = function (period) {
-//   var that = this;
-//   var count = 0;
-//
-//   var x = this.data.length ? this.data[this.data.length - 1] : 0;
-//
-//   return function () {
-//     that.data.push({ x: x += period / 1000, y: Math.random() * 10 });
-//     count++;
-//   }
-// }
-
 Line.prototype.startTracking = function (period) {
   // is there a better way to accomplish this / that?
   setInterval(this.generateData(period), period);
 }
 
-// Line.prototype.getGraphPoints = function (numPoints) {
-//   return this.data.slice(this.data.length - numPoints);
-// }
 
 // var l = new Line({
 //   className: "line1"
