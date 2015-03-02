@@ -45,13 +45,6 @@ function initGyro() {
       ay = parseFloat(o.y.toFixed(5));
       az = parseFloat(o.z.toFixed(5));
 
-      // need to get rid of magic numbers
-      xaxis += period / 1000;
-
-      lineAX.data.push({x: xaxis, y: ax});
-      lineAY.data.push({x: xaxis, y: ay});
-      lineAZ.data.push({x: xaxis, y: az});
-
       // angular rotation velocity
 
       alphaR = convertDegreesToRadians(
@@ -61,7 +54,7 @@ function initGyro() {
       betaR = convertDegreesToRadians(
         parseFloat(o.betaR.toFixed(5))
       );  // X
-      
+
       gammaR = convertDegreesToRadians(
         parseFloat(o.gammaR.toFixed(5))
       ); // Y
@@ -87,6 +80,29 @@ function initGyro() {
       position = $V(KM.x_k.elements.slice(0,3));
       linearVelocity = $V(KM.x_k.elements.slice(3,6));
       angularVelocity = $V([betaR, gammaR, alphaR]);
+
+      // console.log(linearVelocity.elements);
+      var lvX = linearVelocity.elements[0],
+          lvY = linearVelocity.elements[1],
+          lvZ = linearVelocity.elements[2],
+          avX = angularVelocity.elements[0]
+          avY = angularVelocity.elements[1]
+          avZ = angularVelocity.elements[2];
+
+      // need to get rid of magic numbers
+      xaxis += period / 1000;
+
+      lineLVX.data.push({x: xaxis, y: lvX});
+      lineLVY.data.push({x: xaxis, y: lvY});
+      lineLVZ.data.push({x: xaxis, y: lvZ});
+
+      lineAVX.data.push({x: xaxis, y: avX});
+      lineAVY.data.push({x: xaxis, y: avY});
+      lineAVZ.data.push({x: xaxis, y: avZ});
+
+      // linePX.data.push({x: xaxis, y: px});
+      // linePY.data.push({x: xaxis, y: py});
+      // linePZ.data.push({x: xaxis, y: pz});
 
       linearAccel = accelWithoutGravity.subtract(
         angularVelocity.cross(linearVelocity)
@@ -119,29 +135,16 @@ function initGyro() {
           py = KM.x_k.elements[1],
           pz = KM.x_k.elements[2];
 
-      linePX.data.push({x: xaxis, y: px});
-      linePY.data.push({x: xaxis, y: py});
-      linePZ.data.push({x: xaxis, y: pz});
-
-      var vx = KM.x_k.elements[3],
-          vy = KM.x_k.elements[4],
-          vz = KM.x_k.elements[5];
-
-      lineVX.data.push({x: xaxis, y: vx});
-      lineVY.data.push({x: xaxis, y: vy});
-      lineVZ.data.push({x: xaxis, y: vz});
 
       // show position
       elemPx.innerHTML = px.toFixed(3);
       elemPy.innerHTML = py.toFixed(3);
       elemPz.innerHTML = pz.toFixed(3);
 
-      // show velocity
-      elemVx.innerHTML = vx.toFixed(3);
-      elemVy.innerHTML = vy.toFixed(3);
-      elemVz.innerHTML = vz.toFixed(3);
-
-
+      // // show velocity
+      // elemVx.innerHTML = vx.toFixed(3);
+      // elemVy.innerHTML = vy.toFixed(3);
+      // elemVz.innerHTML = vz.toFixed(3);
 
       // elemVelX.innerHTML = linearAccel.elements[0].toFixed(3);
       // elemVelY.innerHTML = linearAccel.elements[1].toFixed(3);
@@ -206,17 +209,13 @@ var lineVX, lineVY, lineVZ, graphV;
 var linePX, linePY, linePZ, graphP;
 
 function addGraphs () {
-  lineAX = new Line({className: "lineX"});
-  lineAY = new Line({className: "lineY"});
-  lineAZ = new Line({className: "lineZ"});
+  lineAVX = new Line({className: "lineX"});
+  lineAVY = new Line({className: "lineY"});
+  lineAVZ = new Line({className: "lineZ"});
 
-  lineVX = new Line({className: "lineX"});
-  lineVY = new Line({className: "lineY"});
-  lineVZ = new Line({className: "lineZ"});
-
-  linePX = new Line({className: "lineX"});
-  linePY = new Line({className: "lineY"});
-  linePZ = new Line({className: "lineZ"});
+  lineLVX = new Line({className: "lineX"});
+  lineLVY = new Line({className: "lineY"});
+  lineLVZ = new Line({className: "lineZ"});
 
   graphA = new Graph({
     rangeX: 10, // we expect duration of time in seconds
@@ -225,46 +224,31 @@ function addGraphs () {
     period: period
   });
 
-  graphA.lines = [lineAX, lineAY, lineAZ];
+  graphA.lines = [lineAVX, lineAVY, lineAVZ];
 
   // pass in id of container div
-  graphA.init("graphAccel");
+  // graphA.init("graphAcclAngular");
 
-  graphA.startDrawing();
+  // graphA.startDrawing();
 
   /////////////////////
 
-  graphV = new Graph({
+  graphL = new Graph({
     rangeX: 10, // we expect duration of time in seconds
     maxY: 10,
     minY: -10,
     period: period
   });
 
-  graphV.lines = [lineVX, lineVY, lineVZ];
+  graphL.lines = [lineLVX, lineLVY, lineLVZ];
 
   // pass in id of container div
-  graphV.init("graphVel");
+  graphL.init("graphAcclLinear");
 
-  graphV.startDrawing();
-
-  /////////////////////
-
-  graphP = new Graph({
-    rangeX: 10, // we expect duration of time in seconds
-    maxY: 10,
-    minY: -10,
-    period: period
-  });
-
-  graphP.lines = [linePX, linePY, linePZ];
-
-  // pass in id of container div
-  graphP.init("graphPos");
-
-  graphP.startDrawing();
+  graphL.startDrawing();
 
 }
+
 addGraphs();
 
 initGyro();
