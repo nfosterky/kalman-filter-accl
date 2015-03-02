@@ -2,33 +2,20 @@
 <html>
 <head>
 	<title>Kalman Acceleration Demo</title>
-	<style>
-		body {
-			font-size: 4rem;
-			text-align: center;
-			margin: 0;
-			padding: 0;
-		}
-
-		#constraintLight {
-			width: 4rem;
-	    height: 4rem;
-	    background: red;
-			margin: auto;
-		}
-
-		div {
-			min-height: 8rem;
-		}
-
-		.canvas-container {
-			border: 1rem solid black;
-			margin: auto;
-		}
-	</style>
+	<link rel="stylesheet" href="css/demo.css">
 </head>
 <body>
-	<canvas id="container"></canvas>
+	<!-- <canvas id="container"></canvas> -->
+	<<div>Acceleration</div>
+	<div id="graphAccel"></div>
+
+	<div>Velocity</div>
+	<div id="graphVel"></div>
+
+	<div>Position</div>
+	<div id="graphPos"></div>
+
+
 	<div>Position</div>
 	<div>X: <span id="posX"></span></div>
 	<div>Y: <span id="posY"></span></div>
@@ -42,8 +29,10 @@
 	<div id="constraintLight"></div>
 <script type="text/javascript" src="js/sylvester.src.js"></script>
 <script type="text/javascript" src="js/fabric.min.js"></script>
+<script type="text/javascript" src="js/d3.min.js"></script>
 <script type="text/javascript" src="js/gyro.js"></script>
 <script type="text/javascript" src="js/kalman.js"></script>
+<script type="text/javascript" src="js/graph.js"></script>
 <script type="text/javascript" src="js/demo.js"></script>
 </body>
 </html>
