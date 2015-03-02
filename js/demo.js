@@ -7,197 +7,264 @@ function convertDegreesToRadians (degrees) {
 var CANVAS_MID_TOP = window.innerHeight / 2;
 
 // demo.js
-window.onload = function() {
-  var elemPosX = document.getElementById("posX"),
-      elemPosY = document.getElementById("posY"),
-      elemPosZ = document.getElementById("posZ"),
-      elemVelX = document.getElementById("velX"),
-      elemVelY = document.getElementById("velY"),
-      elemVelZ = document.getElementById("velZ"),
-      light    = document.getElementById("constraintLight");
 
-  var dt = 0.1; // multiply by second = hundred microseconds
+var elemPx = document.getElementById("posX"),
+    elemPy = document.getElementById("posY"),
+    elemPz = document.getElementById("posZ"),
+    elemVx = document.getElementById("velX"),
+    elemVy = document.getElementById("velY"),
+    elemVz = document.getElementById("velZ"),
+    light  = document.getElementById("constraintLight");
 
-  var alphaR, betaR, gammaR;
-  var top = 0;
-  function initGyro() {
+var dt = 0.1; // multiply by second = hundred microseconds
 
-    // set frequency of measurements in milliseconds
-    gyro.frequency = dt * SECOND;
+var alphaR, betaR, gammaR;
 
-    gyro.startTracking(function(o) {
-      var x, y, z;
-      // console.log(o.x);
-      if (o.x !== null) {
-        ax = parseFloat(o.x.toFixed(5));
-        ay = parseFloat(o.y.toFixed(5));
-        az = parseFloat(o.z.toFixed(5));
+var top = 0;
 
-        // angular rotation velocity
-        alphaR = convertDegreesToRadians(parseFloat(o.alphaR.toFixed(5))); // Z
-        betaR  = convertDegreesToRadians(parseFloat(o.betaR.toFixed(5)));  // X
-        gammaR = convertDegreesToRadians(parseFloat(o.gammaR.toFixed(5))); // Y
+var period = dt * SECOND;
 
-        // update changes to F matrix
-        F_k.elements[3][4] = dt *  alphaR;
-        F_k.elements[3][5] = dt * -gammaR;
+function initGyro() {
+  var x, y, z;
 
-        F_k.elements[4][3] = dt * -alphaR;
-        F_k.elements[4][5] = dt *  betaR;
+  // set frequency of measurements in milliseconds
+  gyro.frequency = period;
 
-        F_k.elements[5][3] = dt *  gammaR;
-        F_k.elements[5][4] = dt * -betaR;
-        KM.F_k = F_k;
+  var xaxis = 0;
 
-        var u_k = $V([ax, ay, az]);
-        KM.predict(u_k);
+  gyro.startTracking(function(o) {
+    var u_k,
+        accelWithoutGravity,
+        position,
+        linearVelocity,
+        angularVelocity,
+        linearAccel;
 
-        var accelWithoutGravity = u_k,
-            position = $V(KM.x_k.elements.slice(0,3)),
-            linearVelocity = $V(KM.x_k.elements.slice(3,6)),
-            angularVelocity = $V([betaR, gammaR, alphaR]);
+    if (o.x !== null) {
+      ax = parseFloat(o.x.toFixed(5));
+      ay = parseFloat(o.y.toFixed(5));
+      az = parseFloat(o.z.toFixed(5));
 
-        var linearAccel = accelWithoutGravity.subtract(
-            angularVelocity.cross(linearVelocity));
+      // need to get rid of magic numbers
+      xaxis += period / 1000;
 
-        var posX = KM.x_k.elements[0],
-            posY = KM.x_k.elements[1],
-            posZ = KM.x_k.elements[2];
+      lineAX.data.push({x: xaxis, y: ax});
+      lineAY.data.push({x: xaxis, y: ay});
+      lineAZ.data.push({x: xaxis, y: az});
 
-        var velX = KM.x_k.elements[3],
-            velY = KM.x_k.elements[4],
-            velZ = KM.x_k.elements[5];
+      // angular rotation velocity
 
-        // if zero-velocity constraint is applicable
-        var tol = 0.15,
-            sigma2velUpdate = 0.0001;
+      alphaR = convertDegreesToRadians(
+        parseFloat(o.alphaR.toFixed(5))
+      ); // Z
 
-        if (Math.abs(u_k.modulus()) < tol) { // not much accel
-          // apply zero-velocity constraint through an 'observation' of 0
-          var z_k = $V([0,0,0]);
-          var H_k = Matrix.Zero(3,3)
+      betaR = convertDegreesToRadians(
+        parseFloat(o.betaR.toFixed(5))
+      );  // X
+      
+      gammaR = convertDegreesToRadians(
+        parseFloat(o.gammaR.toFixed(5))
+      ); // Y
+
+      // update changes to F matrix
+      F_k.elements[3][4] = dt *  alphaR;
+      F_k.elements[3][5] = dt * -gammaR;
+
+      F_k.elements[4][3] = dt * -alphaR;
+      F_k.elements[4][5] = dt *  betaR;
+
+      F_k.elements[5][3] = dt *  gammaR;
+      F_k.elements[5][4] = dt * -betaR;
+
+      KM.F_k = F_k;
+
+      // needs comment
+      u_k = $V([ax, ay, az]);
+
+      KM.predict(u_k);
+
+      accelWithoutGravity = u_k;
+      position = $V(KM.x_k.elements.slice(0,3));
+      linearVelocity = $V(KM.x_k.elements.slice(3,6));
+      angularVelocity = $V([betaR, gammaR, alphaR]);
+
+      linearAccel = accelWithoutGravity.subtract(
+        angularVelocity.cross(linearVelocity)
+      );
+
+      // if zero-velocity constraint is applicable
+      var tol = 0.15,
+          sigma2velUpdate = 0.0001;
+
+      if (Math.abs(u_k.modulus()) < tol) { // not much accel
+
+        // apply zero-velocity constraint through an 'observation' of 0
+        var z_k = $V([0,0,0]),
+            R_k = Matrix.Diagonal([
+              sigma2velUpdate, sigma2velUpdate, sigma2velUpdate
+            ]),
+            H_k = Matrix.Zero(3,3)
                     .augment(Matrix.I(3))
                     .augment(Matrix.Zero(3,3));
 
-          var R_k = Matrix.Diagonal([
-            sigma2velUpdate, sigma2velUpdate, sigma2velUpdate
-          ]);
+        KM.update(new KalmanObservation(z_k, H_k, R_k));
 
-          var KO = new KalmanObservation(z_k, H_k, R_k);
-          KM.update(KO);
+        light.style.display = "block";
 
-          light.style.display = "block";
-
-        } else {
-          light.style.display = "none";
-        }
-
-        elemPosX.innerHTML = posX.toFixed(3);
-        elemPosY.innerHTML = posY.toFixed(3);
-        elemPosZ.innerHTML = posZ.toFixed(3);
-        elemVelX.innerHTML = velX.toFixed(3);
-        elemVelY.innerHTML = velY.toFixed(3);
-        elemVelZ.innerHTML = velZ.toFixed(3);
-
-        var scaleFactor = window.innerWidth / 15,
-            width = KM.P_k.elements[2][2] * scaleFactor,  // Z
-            height = KM.P_k.elements[1][1] * scaleFactor,  // Y
-            left = posZ * scaleFactor - width/2,
-            top = (CANVAS_MID_TOP + posY * scaleFactor) - height/2;
-
-        // debugger;
-        ell.set({
-          rx: width,
-          ry: height,
-          left: left,
-          top: top
-        });
-
-        canvas.renderAll();
-
-
-        // elemVelX.innerHTML = linearAccel.elements[0].toFixed(3);
-        // elemVelY.innerHTML = linearAccel.elements[1].toFixed(3);
-        // elemVelZ.innerHTML = linearAccel.elements[2].toFixed(3);
-        // console.log(KM.x_k);
+      } else {
+        light.style.display = "none";
       }
-    });
-  }
 
-  // State (3 initial velocities, 3 initial accl biases)
-  var x_0 = $V([0, 0, 0, 0, 0, 0, 0, 0, 0]);
+      var px = KM.x_k.elements[0],
+          py = KM.x_k.elements[1],
+          pz = KM.x_k.elements[2];
 
-  // Covariance Matrix - uncertainity of state (initial error?)
-  var initPositionVariance = 0.001,
-      initVelocityVariance = 0.001,
-      initBiasVariance = 0;
+      linePX.data.push({x: xaxis, y: px});
+      linePY.data.push({x: xaxis, y: py});
+      linePZ.data.push({x: xaxis, y: pz});
 
-  var P_0 = Matrix.Diagonal([
-    initPositionVariance, initPositionVariance, initPositionVariance,
-    initVelocityVariance, initVelocityVariance, initVelocityVariance,
-    initBiasVariance, initBiasVariance, initBiasVariance
-  ]);
+      var vx = KM.x_k.elements[3],
+          vy = KM.x_k.elements[4],
+          vz = KM.x_k.elements[5];
 
-  // Transition Matrix - how each variable is updated, update each timestep
-  var numStateVars = 9,
-      numInputVars = 3;
+      lineVX.data.push({x: xaxis, y: vx});
+      lineVY.data.push({x: xaxis, y: vy});
+      lineVZ.data.push({x: xaxis, y: vz});
 
-  F_k = Matrix.I(numStateVars);
+      // show position
+      elemPx.innerHTML = px.toFixed(3);
+      elemPy.innerHTML = py.toFixed(3);
+      elemPz.innerHTML = pz.toFixed(3);
 
-  F_k.elements[0][3] = dt;
-  F_k.elements[1][4] = dt;
-  F_k.elements[2][5] = dt;
+      // show velocity
+      elemVx.innerHTML = vx.toFixed(3);
+      elemVy.innerHTML = vy.toFixed(3);
+      elemVz.innerHTML = vz.toFixed(3);
 
-  F_k.elements[3][6] = dt;
-  F_k.elements[4][7] = dt;
-  F_k.elements[5][8] = dt;
 
-  // ~ Control Matrix - converts external inputs for updating state
-  var B_k = Matrix.Zero(numStateVars, numInputVars); //$M([[0]]);
 
-  B_k.elements[3][0] = dt;
-  B_k.elements[4][1] = dt;
-  B_k.elements[5][2] = dt;
+      // elemVelX.innerHTML = linearAccel.elements[0].toFixed(3);
+      // elemVelY.innerHTML = linearAccel.elements[1].toFixed(3);
+      // elemVelZ.innerHTML = linearAccel.elements[2].toFixed(3);
+      // console.log(KM.x_k);
+    }
+  });
+}
 
-  // Prediction Noise Matrix, weights for prediction step, previous matrices
-  var pSigmaSquared = .00005,    // change later ?
-      vSigmaSquared = .00005,    // change later ?
-      bSigmaSquared = .00005;    // change later ?
+// State (3 initial velocities, 3 initial accl biases)
+var x_0 = $V([0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
-  var Q_k = Matrix.Diagonal([
-    pSigmaSquared, pSigmaSquared, pSigmaSquared,
-    vSigmaSquared, vSigmaSquared, vSigmaSquared,
-    bSigmaSquared, bSigmaSquared, bSigmaSquared
-  ]);
+// Covariance Matrix - uncertainity of state (initial error?)
+var initPositionVariance = 0.001,
+    initVelocityVariance = 0.001,
+    initBiasVariance = 0;
 
-  var KM = new KalmanModel(x_0, P_0, F_k, B_k, Q_k);
+var P_0 = Matrix.Diagonal([
+  initPositionVariance, initPositionVariance, initPositionVariance,
+  initVelocityVariance, initVelocityVariance, initVelocityVariance,
+  initBiasVariance, initBiasVariance, initBiasVariance
+]);
 
-  var canvas, ell;
+// Transition Matrix - how each variable is updated, update each timestep
+var numStateVars = 9,
+    numInputVars = 3;
 
-  function addMap () {
-    // create a wrapper around native canvas element (with id="c")
-    canvas = new fabric.Canvas('container');
+F_k = Matrix.I(numStateVars);
 
-    canvas.setDimensions({
-      height: window.innerHeight,
-      width: window.innerWidth
-    });
+F_k.elements[0][3] = dt;
+F_k.elements[1][4] = dt;
+F_k.elements[2][5] = dt;
 
-    // create a rectangle object
-    ell = new fabric.Ellipse({
-      left: 0,
-      top: CANVAS_MID_TOP,
-      fill: 'green',
-      rx: 10,
-      ry: 10
-    });
+F_k.elements[3][6] = dt;
+F_k.elements[4][7] = dt;
+F_k.elements[5][8] = dt;
 
-    // "add" rectangle onto canvas
-    canvas.add(ell);
+// ~ Control Matrix - converts external inputs for updating state
+var B_k = Matrix.Zero(numStateVars, numInputVars); //$M([[0]]);
 
-  }
+B_k.elements[3][0] = dt;
+B_k.elements[4][1] = dt;
+B_k.elements[5][2] = dt;
 
-  addMap();
-  initGyro();
+// Prediction Noise Matrix, weights for prediction step, previous matrices
+var pSigmaSquared = .00005,    // change later ?
+    vSigmaSquared = .00005,    // change later ?
+    bSigmaSquared = .00005;    // change later ?
 
-};
+var Q_k = Matrix.Diagonal([
+  pSigmaSquared, pSigmaSquared, pSigmaSquared,
+  vSigmaSquared, vSigmaSquared, vSigmaSquared,
+  bSigmaSquared, bSigmaSquared, bSigmaSquared
+]);
+
+var KM = new KalmanModel(x_0, P_0, F_k, B_k, Q_k);
+
+var canvas, ell;
+
+var lineAX, lineAY, lineAZ, graphA;
+var lineVX, lineVY, lineVZ, graphV;
+var linePX, linePY, linePZ, graphP;
+
+function addGraphs () {
+  lineAX = new Line({className: "lineX"});
+  lineAY = new Line({className: "lineY"});
+  lineAZ = new Line({className: "lineZ"});
+
+  lineVX = new Line({className: "lineX"});
+  lineVY = new Line({className: "lineY"});
+  lineVZ = new Line({className: "lineZ"});
+
+  linePX = new Line({className: "lineX"});
+  linePY = new Line({className: "lineY"});
+  linePZ = new Line({className: "lineZ"});
+
+  graphA = new Graph({
+    rangeX: 10, // we expect duration of time in seconds
+    maxY: 10,
+    minY: -10,
+    period: period
+  });
+
+  graphA.lines = [lineAX, lineAY, lineAZ];
+
+  // pass in id of container div
+  graphA.init("graphAccel");
+
+  graphA.startDrawing();
+
+  /////////////////////
+
+  graphV = new Graph({
+    rangeX: 10, // we expect duration of time in seconds
+    maxY: 10,
+    minY: -10,
+    period: period
+  });
+
+  graphV.lines = [lineVX, lineVY, lineVZ];
+
+  // pass in id of container div
+  graphV.init("graphVel");
+
+  graphV.startDrawing();
+
+  /////////////////////
+
+  graphP = new Graph({
+    rangeX: 10, // we expect duration of time in seconds
+    maxY: 10,
+    minY: -10,
+    period: period
+  });
+
+  graphP.lines = [linePX, linePY, linePZ];
+
+  // pass in id of container div
+  graphP.init("graphPos");
+
+  graphP.startDrawing();
+
+}
+addGraphs();
+
+initGyro();
