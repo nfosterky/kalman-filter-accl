@@ -32,14 +32,20 @@ div {
   display: none;
 }
 
-.line1 {
+.lineX {
   fill: none;
   stroke-width: 1.5px;
   stroke: steelblue;
 }
 
-.line2 {
+.lineY {
   fill: none;
   stroke-width: 1.5px;
   stroke: red;
+}
+
+.lineZ {
+  fill: none;
+  stroke-width: 1.5px;
+  stroke: green;
 }
