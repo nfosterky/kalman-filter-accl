@@ -68,7 +68,7 @@ Graph.prototype.init = function (elemId) {
     .call(yAxis);
 }
 
-Graph.prototype.startDrawing = function (period) {
+Graph.prototype.startDrawing = function () {
   var that = this,
     elapsedTime = 0,
     graphPoints = [];
@@ -81,8 +81,6 @@ Graph.prototype.startDrawing = function (period) {
     // update x min and max
     that.minX = elapsedTime - that.rangeX;
     that.maxX = elapsedTime;
-
-
 
     // update graph x axis
     that.x.domain([that.minX, that.maxX]);
