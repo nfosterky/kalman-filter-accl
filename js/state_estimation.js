@@ -108,24 +108,14 @@ function initGyro() {
         angularVelocity.cross(linearVelocity)
       );
 
-      // if zero-velocity constraint is applicable
-      var tol = 0.15,
-          sigma2velUpdate = 0.0001;
+      var accelNoiseThreshold = 0.15;
 
-      if (Math.abs(u_k.modulus()) < tol) { // not much accel
+      // if zero-velocity constraint is applicable
+      if (Math.abs(u_k.modulus()) < accelNoiseThreshold) { // not much accel
 
         // apply zero-velocity constraint through an 'observation' of 0
-        var z_k = $V([0,0,0]),
-            R_k = Matrix.Diagonal([
-              sigma2velUpdate, sigma2velUpdate, sigma2velUpdate
-            ]),
-            H_k = Matrix.Zero(3,3)
-                    .augment(Matrix.I(3))
-                    .augment(Matrix.Zero(3,3));
-
-        KM.update(new KalmanObservation(z_k, H_k, R_k));
-
-        light.style.display = "block";
+        KM.update(zeroVelocityConstraint);
+        light.style.display = "block"; // visualize for debugging
 
       } else {
         light.style.display = "none";
@@ -154,6 +144,19 @@ function initGyro() {
   });
 }
 
+function zeroVelocityConstraint(){
+  var z_k = $V([0,0,0]),                // 'measurement' velocity of 0-vector
+      sigma2velUpdate = 0.0001,         // variance of constraint   
+      R_k = Matrix.Diagonal([
+        sigma2velUpdate, sigma2velUpdate, sigma2velUpdate
+      ]),
+      H_k = Matrix.Zero(3,3)
+            .augment(Matrix.I(3))
+            .augment(Matrix.Zero(3,3)); // matrix to extract actual velocity for comparison
+
+  return new KalmanObservation(z_k, H_k, R_k);
+
+}
 
 function initCamera() {
     webCamFlow = new oflow.WebCamFlow()
@@ -169,7 +172,7 @@ function initCamera() {
 }
 
 
-// State (3 initial velocities, 3 initial accl biases)
+// State (3 initial positions, 3 initial velocities, 3 initial accl biases)
 var x_0 = $V([0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
 // Covariance Matrix - uncertainity of state (initial error?)
