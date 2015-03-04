@@ -6,8 +6,6 @@ function convertDegreesToRadians (degrees) {
 
 var CANVAS_MID_TOP = window.innerHeight / 2;
 
-// demo.js
-
 var elemPx  = document.getElementById("posX"),
     elemPy  = document.getElementById("posY"),
     elemPz  = document.getElementById("posZ"),
