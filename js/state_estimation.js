@@ -6,15 +6,15 @@ function convertDegreesToRadians (degrees) {
 
 var CANVAS_MID_TOP = window.innerHeight / 2;
 
-// demo.js
-
-var elemPx = document.getElementById("posX"),
-    elemPy = document.getElementById("posY"),
-    elemPz = document.getElementById("posZ"),
-    elemVx = document.getElementById("velX"),
-    elemVy = document.getElementById("velY"),
-    elemVz = document.getElementById("velZ"),
-    light  = document.getElementById("constraintLight");
+var elemPx  = document.getElementById("posX"),
+    elemPy  = document.getElementById("posY"),
+    elemPz  = document.getElementById("posZ"),
+    elemOFx = document.getElementById("ofX"),
+    elemOFy = document.getElementById("ofY"),
+    elemVx  = document.getElementById("velX"),
+    elemVy  = document.getElementById("velY"),
+    elemVz  = document.getElementById("velZ"),
+    light   = document.getElementById("constraintLight");
 
 var dt = 0.1; // multiply by second = hundred microseconds
 
@@ -108,33 +108,29 @@ function initGyro() {
         angularVelocity.cross(linearVelocity)
       );
 
-      // if zero-velocity constraint is applicable
-      var tol = 0.15,
-          sigma2velUpdate = 0.0001;
 
-      if (Math.abs(u_k.modulus()) < tol) { // not much accel
+      // ---------- STATE ESTIMATION UPDATES FROM SENSOR MEASUREMENTS
+
+
+      // if zero-velocity constraint is applicable
+      var accelNoiseThreshold = 0.15;
+      if (Math.abs(u_k.modulus()) < accelNoiseThreshold) { // not much accel
 
         // apply zero-velocity constraint through an 'observation' of 0
-        var z_k = $V([0,0,0]),
-            R_k = Matrix.Diagonal([
-              sigma2velUpdate, sigma2velUpdate, sigma2velUpdate
-            ]),
-            H_k = Matrix.Zero(3,3)
-                    .augment(Matrix.I(3))
-                    .augment(Matrix.Zero(3,3));
-
-        KM.update(new KalmanObservation(z_k, H_k, R_k));
-
-        light.style.display = "block";
+        KM.update(zeroVelocityConstraint);
+        light.style.display = "block"; // visualize for debugging
 
       } else {
         light.style.display = "none";
       }
 
+      // if optic flow measurement available
+      // update state velocity based on OF direction
+      // KM.update(translationalOFdirectionConstraint(opticFlow, angularVelocity);
+
       var px = KM.x_k.elements[0],
           py = KM.x_k.elements[1],
           pz = KM.x_k.elements[2];
-
 
       // show position
       elemPx.innerHTML = px.toFixed(3);
@@ -154,7 +150,41 @@ function initGyro() {
   });
 }
 
-// State (3 initial velocities, 3 initial accl biases)
+function zeroVelocityConstraint(){
+  var z_k = $V([0,0,0]),                // 'measurement' velocity of 0-vector
+      sigma2velUpdate = 0.0001,         // variance of constraint   
+      R_k = Matrix.Diagonal([
+        sigma2velUpdate, sigma2velUpdate, sigma2velUpdate
+      ]),
+      H_k = Matrix.Zero(3,3)
+            .augment(Matrix.I(3))
+            .augment(Matrix.Zero(3,3)); // matrix to extract actual velocity for comparison
+
+  return new KalmanObservation(z_k, H_k, R_k);
+
+}
+
+function translationalOFdirectionConstraint(opticFlow, angularVelocity){
+  
+  return new KalmanObservation(z_k, H_k, R_k);
+}
+
+
+function initCamera() {
+    webCamFlow = new oflow.WebCamFlow()
+    webCamFlow.onCalculated( function (direction) {
+      direction.u*=100;
+      direction.v*=100;
+      if(Math.abs(direction.u) > 0.1)
+        elemOFx.innerHTML = direction.u.toFixed(3);
+      if(Math.abs(direction.v) > 0.1)
+        elemOFy.innerHTML = direction.v.toFixed(3);
+    });
+        webCamFlow.startCapture();
+}
+
+
+// State (3 initial positions, 3 initial velocities, 3 initial accl biases)
 var x_0 = $V([0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
 // Covariance Matrix - uncertainity of state (initial error?)
@@ -250,5 +280,7 @@ function addGraphs () {
 }
 
 addGraphs();
+
+initCamera();
 
 initGyro();
