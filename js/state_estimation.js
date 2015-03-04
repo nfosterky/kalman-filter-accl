@@ -108,9 +108,12 @@ function initGyro() {
         angularVelocity.cross(linearVelocity)
       );
 
-      var accelNoiseThreshold = 0.15;
+
+      // ---------- STATE ESTIMATION UPDATES FROM SENSOR MEASUREMENTS
+
 
       // if zero-velocity constraint is applicable
+      var accelNoiseThreshold = 0.15;
       if (Math.abs(u_k.modulus()) < accelNoiseThreshold) { // not much accel
 
         // apply zero-velocity constraint through an 'observation' of 0
@@ -121,10 +124,13 @@ function initGyro() {
         light.style.display = "none";
       }
 
+      // if optic flow measurement available
+      // update state velocity based on OF direction
+      // KM.update(translationalOFdirectionConstraint(opticFlow, angularVelocity);
+
       var px = KM.x_k.elements[0],
           py = KM.x_k.elements[1],
           pz = KM.x_k.elements[2];
-
 
       // show position
       elemPx.innerHTML = px.toFixed(3);
@@ -157,6 +163,12 @@ function zeroVelocityConstraint(){
   return new KalmanObservation(z_k, H_k, R_k);
 
 }
+
+function translationalOFdirectionConstraint(opticFlow, angularVelocity){
+  
+  return new KalmanObservation(z_k, H_k, R_k);
+}
+
 
 function initCamera() {
     webCamFlow = new oflow.WebCamFlow()
