@@ -8,13 +8,15 @@ var CANVAS_MID_TOP = window.innerHeight / 2;
 
 // demo.js
 
-var elemPx = document.getElementById("posX"),
-    elemPy = document.getElementById("posY"),
-    elemPz = document.getElementById("posZ"),
-    elemVx = document.getElementById("velX"),
-    elemVy = document.getElementById("velY"),
-    elemVz = document.getElementById("velZ"),
-    light  = document.getElementById("constraintLight");
+var elemPx  = document.getElementById("posX"),
+    elemPy  = document.getElementById("posY"),
+    elemPz  = document.getElementById("posZ"),
+    elemOFx = document.getElementById("ofX"),
+    elemOFy = document.getElementById("ofY"),
+    elemVx  = document.getElementById("velX"),
+    elemVy  = document.getElementById("velY"),
+    elemVz  = document.getElementById("velZ"),
+    light   = document.getElementById("constraintLight");
 
 var dt = 0.1; // multiply by second = hundred microseconds
 
@@ -154,6 +156,21 @@ function initGyro() {
   });
 }
 
+
+function initCamera() {
+    webCamFlow = new oflow.WebCamFlow()
+    webCamFlow.onCalculated( function (direction) {
+      direction.u*=100;
+      direction.v*=100;
+      if(Math.abs(direction.u) > 0.1)
+        elemOFx.innerHTML = direction.u.toFixed(3);
+      if(Math.abs(direction.v) > 0.1)
+        elemOFy.innerHTML = direction.v.toFixed(3);
+    });
+        webCamFlow.startCapture();
+}
+
+
 // State (3 initial velocities, 3 initial accl biases)
 var x_0 = $V([0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
@@ -250,5 +267,7 @@ function addGraphs () {
 }
 
 addGraphs();
+
+initCamera();
 
 initGyro();
