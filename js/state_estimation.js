@@ -161,10 +161,45 @@ function zeroVelocityConstraint(){
 
 }
 
-function translationalOFdirectionConstraint(opticFlow, angularVelocity){
+// Meausurement of direction of translational optic flow is compared with the direction of 
+// the velocity estimate. As this is a nonlinear manipulation of the state vector, 
+// a Jacobian is used for the measurement matrix (refer to the extended Kalman Filter)
+translationalOFdirectionConstraint = function translationalOFdirectionConstraint(velocityEstimate, opticFlow, angularVelocity) {
+  var translationalOF = derotateOF(opticFlow, angularVelocity);
+  var translationalOFnorm = translationalOF.modulus();
+  var z_k = $V([translationalOF.elements[0]/translationalOFnorm,
+                translationalOF.elements[1]/translationalOFnorm]); // measurement (2D translational OF)
 
+  var R_body_to_image = $M([[1, 0, 0], [0, 1, 0]]); // transformation from body frame to image frame (2D)
+  var velocity_imageFrame = R_body_to_image.x(velocityEstimate);
+  var velocity_imageFrame_norm = velocity_imageFrame.modulus();
+
+  var H_k = Matrix.Zero(2, 9); // Jacbobian of (nonlinear) measurement function
+  for (var i = 0; i < 2; i++) {
+    for (var j = 0; j < 3; j++) {
+      H_k.elements[i][3+j] = -R_body_to_image.elements[i][j] / velocity_imageFrame_norm + 
+        ( velocity_imageFrame.elements[0]*R_body_to_image.elements[0][j] + velocity_imageFrame.elements[1]*R_body_to_image.elements[1][j] )
+          * velocity_imageFrame.elements[i] / Math.pow(velocity_imageFrame_norm, 3);
+    }
+  }
+  var alpha=1, beta=1
+  var uncertainity = alpha * 1/translationalOFnorm + beta * angularVelocity.modulus();
+  var R_k = Matrix.Diagonal([uncertainity, uncertainity]);
   return new KalmanObservation(z_k, H_k, R_k);
 }
+
+function derotateOF(opticFlow, angularVelocity) {
+  var viewingDirection = $V([0, 0, -1]); // back camera looks towards -z axis
+  var negRotationalOF = angularVelocity.cross(viewingDirection); // THIRD ELEMENT IS 0 RIGHT?
+  var translationalOF = opticFlow.add(negRotationalOF);
+
+  var ratioThreshold = 3;
+  if( negRotationalOF.modulus()/translationalOF.modulus() > ratioThreshold) {
+    console.log("Warning: derotation may not be accurate.")
+  }
+  return translationalOF
+}
+
 
 function initCamera() {
     var zoneSize = 10,
@@ -179,6 +214,18 @@ function initCamera() {
       if(Math.abs(direction.v) > 0.1)
         elemOFy.innerHTML = direction.v.toFixed(3);
     
+
+      // update state velocity based on OF direction
+      var opticFlow = $V([direction.u, direction.v, 0]),
+          linearVelocity = $V(KM.x_k.elements.slice(3,6)),
+          angularVelocity = $V([betaR, gammaR, alphaR]); // change so ensure current vals
+
+      var opticFlowNoiseThreshold = 0.1;
+      if (opticFlow.modulus() > opticFlowNoiseThreshold) {
+        KM.update(translationalOFdirectionConstraint(linearVelocity, opticFlow, angularVelocity));
+        updateDisplayedValues();
+      }
+
     });
         webCamFlow.startCapture();
 }
