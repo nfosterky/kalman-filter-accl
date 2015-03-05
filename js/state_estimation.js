@@ -165,20 +165,23 @@ function zeroVelocityConstraint(){
 }
 
 function translationalOFdirectionConstraint(opticFlow, angularVelocity){
-  
+
   return new KalmanObservation(z_k, H_k, R_k);
 }
 
-
 function initCamera() {
-    webCamFlow = new oflow.WebCamFlow()
+    var zoneSize = 10,
+        videoElement = document.getElementById('videoOut'),
+        videoWidth = videoElement.videoWidth,
+        videoHeight = videoElement.videoHeight;
+        webCamFlow = new oflow.WebCamFlow(videoElement, zoneSize, 'environment');
+
     webCamFlow.onCalculated( function (direction) {
-      direction.u*=100;
-      direction.v*=100;
       if(Math.abs(direction.u) > 0.1)
         elemOFx.innerHTML = direction.u.toFixed(3);
       if(Math.abs(direction.v) > 0.1)
         elemOFy.innerHTML = direction.v.toFixed(3);
+    
     });
         webCamFlow.startCapture();
 }
