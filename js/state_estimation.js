@@ -71,7 +71,7 @@ function initGyro() {
 
       KM.F_k = F_k;
 
-      // needs comment
+      // input vector
       u_k = $V([ax, ay, az]);
 
       KM.predict(u_k);
@@ -81,7 +81,6 @@ function initGyro() {
       linearVelocity = $V(KM.x_k.elements.slice(3,6));
       angularVelocity = $V([betaR, gammaR, alphaR]);
 
-      // console.log(linearVelocity.elements);
       var lvX = linearVelocity.elements[0],
           lvY = linearVelocity.elements[1],
           lvZ = linearVelocity.elements[2],
@@ -109,9 +108,6 @@ function initGyro() {
       );
 
 
-      // ---------- STATE ESTIMATION UPDATES FROM SENSOR MEASUREMENTS
-
-
       // if zero-velocity constraint is applicable
       var accelNoiseThreshold = 0.15;
       if (Math.abs(u_k.modulus()) < accelNoiseThreshold) { // not much accel
@@ -123,19 +119,9 @@ function initGyro() {
       } else {
         light.style.display = "none";
       }
+      
 
-      // if optic flow measurement available
-      // update state velocity based on OF direction
-      // KM.update(translationalOFdirectionConstraint(opticFlow, angularVelocity);
-
-      var px = KM.x_k.elements[0],
-          py = KM.x_k.elements[1],
-          pz = KM.x_k.elements[2];
-
-      // show position
-      elemPx.innerHTML = px.toFixed(3);
-      elemPy.innerHTML = py.toFixed(3);
-      elemPz.innerHTML = pz.toFixed(3);
+      updateDisplayedValues();
 
       // // show velocity
       // elemVx.innerHTML = vx.toFixed(3);
@@ -149,6 +135,17 @@ function initGyro() {
     }
   });
 }
+function updateDisplayedValues(){
+      var px = KM.x_k.elements[0],
+          py = KM.x_k.elements[1],
+          pz = KM.x_k.elements[2];
+
+      // show position
+      elemPx.innerHTML = px.toFixed(3);
+      elemPy.innerHTML = py.toFixed(3);
+      elemPz.innerHTML = pz.toFixed(3);
+}
+// ---------- STATE ESTIMATION UPDATES FROM SENSOR MEASUREMENTS
 
 function zeroVelocityConstraint(){
   var z_k = $V([0,0,0]),                // 'measurement' velocity of 0-vector
